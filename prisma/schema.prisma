@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  famMemberships FamMembership[]
+  personalAccounts Account[] @relation("PersonalAccounts")
+  accountHoldings Account[] @relation("AccountHolder")
+  assignedTasks PlanTask[]
+
+  @@map("users")
+}
+
+// Fam (Family Unit) model
+model Fam {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  members FamMembership[]
+  assets  Asset[]
+  accounts Account[]
+  plans   Plan[]
+
+  @@map("fams")
+}
+
+// FamMembership junction table
+model FamMembership {
+  id       String @id @default(cuid())
+  userId   String
+  famId    String
+  role     Role   @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fam  Fam  @relation(fields: [famId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, famId])
+  @@map("fam_memberships")
+}
+
+// Asset model
+model Asset {
+  id           String   @id @default(cuid())
+  famId        String
+  type         AssetType
+  name         String
+  description  String?
+  customFields Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  fam      Fam       @relation(fields: [famId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@map("assets")
+}
+
+// Account model
+model Account {
+  id              String       @id @default(cuid())
+  assetId         String?      // null for personal accounts
+  userId          String?      // for personal accounts
+  famId           String
+  accountHolderId String
+  type            AccountType
+  name            String
+  provider        String
+  accountNumber   String?
+  dueDate         DateTime?
+  amount          Decimal?
+  expiryDate      DateTime?
+  customFields    Json         @default("{}")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relationships
+  asset         Asset?     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  personalUser  User?      @relation("PersonalAccounts", fields: [userId], references: [id], onDelete: Cascade)
+  fam           Fam        @relation(fields: [famId], references: [id], onDelete: Cascade)
+  accountHolder User       @relation("AccountHolder", fields: [accountHolderId], references: [id])
+  documents     Document[]
+
+  @@map("accounts")
+}
+
+// Plan model
+model Plan {
+  id           String     @id @default(cuid())
+  famId        String
+  type         PlanType
+  name         String
+  description  String?
+  startDate    DateTime?
+  endDate      DateTime?
+  status       PlanStatus @default(PLANNING)
+  customFields Json       @default("{}")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relationships
+  fam   Fam        @relation(fields: [famId], references: [id], onDelete: Cascade)
+  tasks PlanTask[]
+
+  @@map("plans")
+}
+
+// PlanTask model
+model PlanTask {
+  id           String    @id @default(cuid())
+  planId       String
+  title        String
+  description  String?
+  assignedToId String?
+  dueDate      DateTime?
+  completed    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relationships
+  plan       Plan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  assignedTo User? @relation(fields: [assignedToId], references: [id])
+
+  @@map("plan_tasks")
+}
+
+// Document model for storing bill attachments
+model Document {
+  id          String   @id @default(cuid())
+  accountId   String
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  storageUrl  String
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum AssetType {
+  HOME
+  VEHICLE
+  CUSTOM
+}
+
+enum AccountType {
+  COUNCIL_TAX
+  HOME_INSURANCE
+  ENERGY_BILL
+  TV_PACKAGE
+  FACTORING
+  LIFE_INSURANCE
+  MOBILE_CONTRACT
+  WILL_TESTAMENT
+  CUSTOM
+}
+
+enum PlanType {
+  HOLIDAY
+  PROPERTY_MOVE
+  CUSTOM
+}
+
+enum PlanStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+}
