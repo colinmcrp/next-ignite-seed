@@ -35,6 +35,8 @@ router.get('/', (req, res) => {
       'POST /api/auth/register - User registration',
       'POST /api/auth/login - User login',
       'POST /api/auth/refresh - Refresh access token',
+      'GET /api/auth/supabase/status - Supabase integration status',
+      'POST /api/auth/supabase/exchange - Exchange Supabase session token',
       'GET /api/auth/profile - Get user profile (protected)',
       'POST /api/fams - Create a new Fam (protected)',
       'GET /api/fams/user - Get user\'s Fams (protected)',

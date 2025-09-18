@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/authService';
+import {
+  supabaseAuthService,
+  SupabaseAuthError,
+} from '../services/supabaseAuthService';
 import { logger } from '../utils/logger';
 
 export class AuthController {
@@ -185,13 +189,65 @@ export class AuthController {
 
     } catch (error) {
       logger.error(`Get profile error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+
       res.status(500).json({
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Failed to get user profile',
           timestamp: new Date().toISOString()
         }
+      });
+    }
+  }
+
+  async getSupabaseStatus(req: Request, res: Response) {
+    const status = supabaseAuthService.getStatus();
+    res.json({
+      supabase: status,
+    });
+  }
+
+  async exchangeSupabaseToken(req: Request, res: Response) {
+    try {
+      const { accessToken } = req.body;
+
+      if (!accessToken) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Supabase access token is required',
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+
+      const result = await supabaseAuthService.exchangeSupabaseToken(accessToken);
+
+      res.json({
+        message: 'Supabase token exchanged successfully',
+        user: result.user,
+        tokens: result.tokens,
+        supabaseUserId: result.supabaseUserId,
+      });
+    } catch (error) {
+      if (error instanceof SupabaseAuthError) {
+        return res.status(error.statusCode).json({
+          error: {
+            code: error.code,
+            message: error.message,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+
+      logger.error(`Supabase token exchange failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to exchange Supabase token',
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   }

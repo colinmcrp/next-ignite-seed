@@ -128,7 +128,7 @@ export class AuthService {
   async verifyAccessToken(token: string): Promise<AuthUser> {
     try {
       const decoded = jwt.verify(token, this.JWT_SECRET) as any;
-      
+
       // Verify user still exists
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId }
@@ -146,6 +146,10 @@ export class AuthService {
     } catch (error) {
       throw new Error('Invalid access token');
     }
+  }
+
+  issueTokensForUser(user: AuthUser): AuthTokens {
+    return this.generateTokens(user);
   }
 
   private generateTokens(user: AuthUser): AuthTokens {
